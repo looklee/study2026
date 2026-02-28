@@ -1,0 +1,39 @@
+# GitHub Actions 配置
+
+name: Welcome New Contributors
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            👋 欢迎来到 Study2026 社区！
+            
+            感谢您提出的第一个 Issue！我们会尽快查看并回复。
+            
+            在等待期间，您可以：
+            - 查看 [贡献指南](./CONTRIBUTING.md)
+            - 阅读 [项目文档](./docs/)
+            - 参与 [讨论区](https://github.com/looklee/study2026/discussions)
+            
+            请确保您已提供足够的信息来帮助我们理解问题。谢谢！
+            
+          pr-message: |
+            🎉 感谢您的第一个 Pull Request！
+            
+            我们非常重视您的贡献！请确保：
+            - [ ] 代码遵循项目规范
+            - [ ] 已添加必要的测试
+            - [ ] 已更新相关文档
+            - [ ] Commit 信息清晰
+            
+            我们会尽快审查您的 PR。再次感谢！
