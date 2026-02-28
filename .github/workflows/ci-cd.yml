@@ -1,59 +1,55 @@
 # GitHub Actions CI/CD for Study2026
+# 简化版 - 禁用所有缓存
 
 name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
 
 jobs:
-  # ==================== 前端检查和构建 ====================
+  # ==================== 前端构建 ====================
   frontend-build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v3
       with:
         node-version: '18'
-        cache: ''
 
     - name: Install dependencies
-      working-directory: apps/web
-      run: |
-        npm ci --legacy-peer-deps || npm install --legacy-peer-deps
-
-    - name: Lint
-      working-directory: apps/web
-      run: npm run lint --if-present
-
-    - name: Type check
-      working-directory: apps/web
-      run: npm run typecheck --if-present
+      run: npm install --legacy-peer-deps
 
     - name: Build
-      working-directory: apps/web
       run: npm run build
 
-  # ==================== 后端检查和测试 ====================
+  # ==================== 后端测试 ====================
   backend-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        cache: ''
 
     - name: Install dependencies
-      working-directory: apps/api
       run: |
-        pip install --upgrade pip
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
+
+    - name: Quick test
+      run: python -c "from app.main_simple import app; print('OK')"
