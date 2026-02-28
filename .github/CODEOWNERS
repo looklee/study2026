@@ -1,0 +1,21 @@
+# Code Owners
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# 默认代码所有者
+* @looklee
+
+# 前端代码
+/apps/web/ @looklee
+
+# 后端代码
+/apps/api/ @looklee
+
+# 文档
+/docs/ @looklee
+*.md @looklee
+
+# GitHub 配置
+.github/ @looklee
+
+# Docker 配置
+/docker/ @looklee

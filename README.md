@@ -7,10 +7,15 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
+[![CI/CD](https://github.com/looklee/study2026/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/looklee/study2026/actions/workflows/ci-cd.yml)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-blue.svg)](https://dependabot.com/)
+[![GitHub stars](https://img.shields.io/github/stars/looklee/study2026.svg?style=social&label=Star)](https://github.com/looklee/study2026)
+[![GitHub issues](https://img.shields.io/github/issues/looklee/study2026.svg)](https://github.com/looklee/study2026/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/looklee/study2026.svg)](https://github.com/looklee/study2026/commits/main)
 
 **个性化的 AI 驱动学习平台 | 可视化工作流引擎 | 智能学习路径生成**
 
-[功能特性](#-功能特性) • [快速开始](#🚀-快速开始) • [文档](./docs) • [贡献指南](./CONTRIBUTING.md)
+[功能特性](#-功能特性) • [快速开始](#🚀-快速开始) • [文档](./docs) • [贡献指南](./CONTRIBUTING.md) • [更新日志](./CHANGELOG.md)
 
 </div>
 

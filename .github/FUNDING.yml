@@ -1,0 +1,10 @@
+# Funding 配置
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+github:
+  - looklee
+
+buy_me_a_coffee: looklee
+
+# custom:
+#   - https://your-payment-link.com
