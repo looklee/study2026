@@ -12,39 +12,42 @@ jobs:
   # ==================== 前端检查和构建 ====================
   frontend-build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: apps/web/package-lock.json
-    
+        cache-dependency-path: 'apps/web/package-lock.json'
+
     - name: Install dependencies
       working-directory: apps/web
       run: npm ci
-    
+
     - name: Lint
       working-directory: apps/web
       run: npm run lint --if-present
-    
+
     - name: Type check
       working-directory: apps/web
       run: npm run typecheck --if-present
-    
+
     - name: Build
       working-directory: apps/web
       run: npm run build
-    
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: frontend-build
-        path: apps/web/.next
+        path: |
+          apps/web/.next
+          !apps/web/.next/cache
         retention-days: 7
+        if-no-files-found: ignore
 
   # ==================== 后端检查和测试 ====================
   backend-test:
