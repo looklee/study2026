@@ -1,0 +1,239 @@
+{
+  "name": "02-Content-Recommender",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content/recommend",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 解析请求并准备搜索参数\nconst input = $input.first().json;\n\nconst searchQueries = {\n  github: {\n    topics: input.topics || [],\n    languages: input.languages || ['Python', 'JavaScript'],\n    minStars: input.minStars || 100\n  },\n  youtube: {\n    keywords: input.keywords || [],\n    channels: input.preferredChannels || [],\n    uploadDate: 'this_year'\n  },\n  courses: {\n    platforms: ['coursera', 'udemy', 'edx'],\n    level: input.level || 'all',\n    price: input.pricePreference || 'any'\n  }\n};\n\nreturn {\n  json: {\n    searchQueries,\n    userId: input.userId || 'anonymous',\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "query-builder",
+      "name": "查询构建器",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/search/repositories",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $node[\"查询构建器\"].json.json.searchQueries.github.topics.join('+topic:') + '+topic:ai+topic:machine-learning' }}"
+            },
+            {
+              "name": "sort",
+              "value": "stars"
+            },
+            {
+              "name": "order",
+              "value": "desc"
+            },
+            {
+              "name": "per_page",
+              "value": "10"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "github-search",
+      "name": "GitHub 资源搜索",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-token",
+          "name": "GitHub API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "你是一位专业的学习内容策展人，擅长发现和推荐高质量的 AI 学习资源。\n\n你的任务：\n1. 分析学习者的需求和水平\n2. 从多个维度评估资源质量\n3. 提供个性化的资源推荐\n4. 解释推荐理由\n\n评估维度：\n- 内容质量（准确性、深度、实用性）\n- 适合程度（与学习者水平匹配度）\n- 时效性（内容是否最新）\n- 口碑评价（评分、评论、热度）\n\n输出格式（JSON）：\n```json\n{\n  \"recommendations\": [\n    {\n      \"id\": \"唯一标识\",\n      \"title\": \"资源标题\",\n      \"type\": \"github|youtube|course|article|book\",\n      \"url\": \"链接\",\n      \"description\": \"资源描述\",\n      \"difficulty\": \"beginner|intermediate|advanced\",\n      \"estimatedHours\": 5,\n      \"rating\": 4.5,\n      \"reason\": \"推荐理由\",\n      \"tags\": [\"标签 1\", \"标签 2\"],\n      \"prerequisites\": [\"前置知识 1\"]\n    }\n  ],\n  \"learningPath\": \"建议的学习顺序\",\n  \"tips\": \"学习建议\"\n}\n```"
+            },
+            {
+              "role": "user",
+              "content": "={{ JSON.stringify({\n  learnerProfile: $node[\"查询构建器\"].first().json,\n  githubResults: $node[\"GitHub 资源搜索\"].first().json,\n  request: \"请根据学习者的需求和搜索结果，推荐 10-15 个最合适的学习资源\"\n}) }}"
+            }
+          ]
+        },
+        "options": {
+          "responseFormat": "json",
+          "temperature": 0.6
+        }
+      },
+      "id": "ai-curator",
+      "name": "AI 资源策展",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理 AI 推荐的资源并添加元数据\nconst aiResponse = $input.first().json.output;\n\nlet recommendations = typeof aiResponse === 'string' \n  ? JSON.parse(aiResponse) \n  : aiResponse;\n\n// 为每个资源添加元数据和追踪信息\nconst enrichedRecommendations = recommendations.recommendations?.map((rec, index) => ({\n  ...rec,\n  metadata: {\n    recommendedAt: new Date().toISOString(),\n    recommendationId: `rec_${Date.now()}_${index}`,\n    aiModel: 'gpt-4o',\n    version: '1.0'\n  },\n  tracking: {\n    viewed: false,\n    saved: false,\n    completed: false,\n    rating: null,\n    feedback: null\n  },\n  relatedResources: [],\n  nextSteps: []\n}));\n\nreturn {\n  json: {\n    status: 'success',\n    recommendations: enrichedRecommendations,\n    learningPath: recommendations.learningPath,\n    tips: recommendations.tips,\n    totalResults: enrichedRecommendations.length,\n    generatedAt: new Date().toISOString()\n  }\n};"
+      },
+      "id": "result-processor",
+      "name": "结果处理",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($node[\"结果处理\"].first().json, null, 2) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "response-node",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "interval": [{ "hours": 24 }],
+        "options": {}
+      },
+      "id": "schedule-trigger",
+      "name": "定时触发器",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 定时任务：更新热门资源\nconst trendingTopics = [\n  'llm', 'transformer', 'diffusion', 'rag', 'agent',\n  'fine-tuning', 'prompt-engineering', 'vector-database'\n];\n\nreturn {\n  json: {\n    type: 'trending_update',\n    topics: trendingTopics,\n    scheduledAt: new Date().toISOString()\n  }\n};"
+      },
+      "id": "trending-updater",
+      "name": "热门资源更新",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "查询构建器",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "查询构建器": {
+      "main": [
+        [
+          {
+            "node": "GitHub 资源搜索",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub 资源搜索": {
+      "main": [
+        [
+          {
+            "node": "AI 资源策展",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI 资源策展": {
+      "main": [
+        [
+          {
+            "node": "结果处理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "结果处理": {
+      "main": [
+        [
+          {
+            "node": "返回响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "定时触发器": {
+      "main": [
+        [
+          {
+            "node": "热门资源更新",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    {
+      "name": "内容推荐",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    },
+    {
+      "name": "AI 策展",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 2,
+  "updatedAt": "2026-02-27T00:00:00.000Z",
+  "versionId": "1"
+}

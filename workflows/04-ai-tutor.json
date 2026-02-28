@@ -1,0 +1,292 @@
+{
+  "name": "04-AI-Tutor",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerOn": "message",
+        "path": "ai-tutor/chat",
+        "options": {}
+      },
+      "id": "chat-trigger",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2000,
+          "systemMessage": "你是一位专业、耐心、友善的 AI 导师，专注于帮助学生掌握 AI 和机器学习知识。\n\n你的特点：\n1. 善于用简单易懂的语言解释复杂概念\n2. 鼓励学生思考，而不是直接给出答案\n3. 根据学生的水平调整讲解深度\n4. 提供实用的代码示例和最佳实践\n5. 指出常见错误和注意事项\n6. 推荐相关学习资源\n\n教学原则：\n- 循序渐进：从基础到进阶\n- 理论 + 实践：概念讲解 + 代码示例\n- 互动式：通过提问引导学生思考\n- 个性化：根据学生背景调整教学方式\n\n当遇到不懂的问题时，诚实承认并提供可能的解决方向。"
+        }
+      },
+      "id": "chat-model",
+      "name": "Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.userId }}",
+        "tableName": "tutor_chat_memory",
+        "options": {}
+      },
+      "id": "memory",
+      "name": "Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.1,
+      "position": [450, 500],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-credentials",
+          "name": "PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "code_interpreter",
+        "description": "执行 Python 代码并返回结果。用于代码示例演示、计算、数据处理等。",
+        "code": {
+          "language": "python"
+        },
+        "options": {}
+      },
+      "id": "code-tool",
+      "name": "代码解释器",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1,
+      "position": [650, 100]
+    },
+    {
+      "parameters": {
+        "name": "knowledge_base",
+        "description": "从知识库中检索相关信息来回答问题。用于查询课程资料、学习笔记、常见问题等。",
+        "options": {
+          "topK": 5,
+          "scoreThreshold": 0.7
+        }
+      },
+      "id": "retriever-tool",
+      "name": "知识库检索",
+      "type": "@n8n/n8n-nodes-langchain.toolRetriever",
+      "typeVersion": 1.1,
+      "position": [650, 250]
+    },
+    {
+      "parameters": {
+        "name": "calculator",
+        "description": "计算数学表达式。用于计算学习进度、时间估算、统计数据分析等。",
+        "options": {}
+      },
+      "id": "calculator-tool",
+      "name": "计算器",
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "name": "learning_path_lookup",
+        "description": "查询用户的学习路径信息，包括当前进度、已完成的内容、下一步建议等。需要提供用户 ID。",
+        "workflowId": {
+          "__rl": true,
+          "value": "03-progress-tracker",
+          "mode": "list",
+          "cachedResultName": "03-Progress-Tracker"
+        },
+        "options": {}
+      },
+      "id": "path-lookup-tool",
+      "name": "学习路径查询",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [650, 550]
+    },
+    {
+      "parameters": {
+        "agent": "openAiFunctionsAgent",
+        "promptType": "define",
+        "systemMessage": "你是一个专业的 AI 学习助手。你的目标是帮助学生更好地学习 AI 和机器学习。\n\n你可以：\n1. 解答概念性问题（使用知识库检索）\n2. 提供代码示例和解释（使用代码解释器）\n3. 进行数学计算（使用计算器）\n4. 查询学习进度和给出建议（使用学习路径查询）\n\n回答风格：\n- 清晰、准确、有条理\n- 使用适当的示例帮助理解\n- 鼓励学生提问和思考\n- 指出关键点和常见误区\n\n如果问题涉及多个方面，分步骤解答。",
+        "options": {
+          "prefixMessages": [
+            {
+              "role": "system",
+              "content": "记住：你是一位经验丰富的 AI 导师，擅长将复杂概念简单化。 always respond in Chinese unless the user specifically asks for English."
+            }
+          ]
+        }
+      },
+      "id": "agent",
+      "name": "AI 导师 Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理 AI 导师的回复并添加元数据\nconst agentResponse = $input.first().json;\nconst chatInput = $('Chat Trigger').first().json;\n\n// 分析回复类型\nconst responseAnalysis = analyzeResponse(agentResponse.output);\n\n// 构建响应\nreturn {\n  json: {\n    message: agentResponse.output,\n    metadata: {\n      timestamp: new Date().toISOString(),\n      conversationId: chatInput.conversationId || generateId(),\n      userId: chatInput.userId || 'anonymous',\n      responseTime: Date.now() - new Date(chatInput.timestamp).getTime(),\n      analysis: responseAnalysis\n    },\n    suggestions: generateFollowUpQuestions(responseAnalysis.topic),\n    resources: recommendResources(responseAnalysis.topic)\n  }\n};\n\nfunction analyzeResponse(response) {\n  const topics = ['概念解释', '代码示例', '学习建议', '进度查询', '数学计算', '资源推荐'];\n  const responseLower = response.toLowerCase();\n  \n  const detectedTopics = topics.filter(topic => {\n    const keywords = {\n      '概念解释': ['什么是', '概念', '原理', '解释', '理解'],\n      '代码示例': ['代码', '示例', '实现', 'python', 'function'],\n      '学习建议': ['建议', '如何学', '路线', '方法', '技巧'],\n      '进度查询': ['进度', '完成', '还有多少', '下一步'],\n      '数学计算': ['计算', '等于', '结果', '数值'],\n      '资源推荐': ['推荐', '资源', '教程', '课程', '书籍']\n    };\n    return keywords[topic]?.some(k => responseLower.includes(k));\n  });\n  \n  return {\n    topics: detectedTopics,\n    mainTopic: detectedTopics[0] || '一般对话',\n    sentiment: 'neutral',\n    complexity: response.length > 500 ? 'high' : 'medium'\n  };\n}\n\nfunction generateFollowUpQuestions(topic) {\n  const questions = {\n    '概念解释': ['能举个具体的例子吗？', '这个概念在实际中怎么应用？', '它和其他概念有什么区别？'],\n    '代码示例': ['这段代码的时间复杂度是多少？', '有没有更优化的写法？', '如何处理边界情况？'],\n    '学习建议': ['我应该先学什么？', '每天需要花多少时间？', '有什么好的练习方法？'],\n    '进度查询': ['我现在的进度如何？', '接下来应该学什么？', '预计多久能完成？'],\n    '数学计算': ['这个公式是怎么推导的？', '有没有更简单的计算方法？', '这个结果意味着什么？'],\n    '资源推荐': ['这个资源适合什么水平？', '还有其他类似的资源吗？', '这些资源的学习顺序是怎样的？']\n  };\n  \n  return (questions[topic] || questions['概念解释']).slice(0, 3);\n}\n\nfunction recommendResources(topic) {\n  // 根据话题推荐资源（简化版）\n  return [];\n}\n\nfunction generateId() {\n  return 'conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);\n}"
+      },
+      "id": "response-processor",
+      "name": "响应处理",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 记录对话日志用于分析\nconst conversationData = {\n  userId: $input.first().json.metadata.userId,\n  conversationId: $input.first().json.metadata.conversationId,\n  timestamp: new Date().toISOString(),\n  userMessage: $('Chat Trigger').first().json.message,\n  botResponse: $input.first().json.message,\n  topics: $input.first().json.metadata.analysis.topics,\n  responseTime: $input.first().json.metadata.responseTime\n};\n\nreturn {\n  json: {\n    log: conversationData,\n    saved: true\n  }\n};"
+      },
+      "id": "conversation-logger",
+      "name": "对话日志",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "table": "conversation_logs",
+        "columns": "user_id, conversation_id, user_message, bot_response, topics, response_time, created_at",
+        "values": "={{ $node[\"对话日志\"].json.json.log.userId }}, {{ $node[\"对话日志\"].json.json.log.conversationId }}, {{ $node[\"对话日志\"].json.json.log.userMessage }}, {{ $node[\"对话日志\"].json.json.log.botResponse }}, {{ JSON.stringify($node[\"对话日志\"].json.json.log.topics) }}, {{ $node[\"对话日志\"].json.json.log.responseTime }}, {{ new Date().toISOString() }}"
+      },
+      "id": "save-log",
+      "name": "保存日志",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI 导师 Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Model": {
+      "ai": [
+        [
+          {
+            "node": "AI 导师 Agent",
+            "type": "ai",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI 导师 Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "代码解释器": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI 导师 Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "知识库检索": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI 导师 Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "计算器": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI 导师 Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "学习路径查询": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI 导师 Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI 导师 Agent": {
+      "main": [
+        [
+          {
+            "node": "响应处理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "响应处理": {
+      "main": [
+        [
+          {
+            "node": "对话日志",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "对话日志": {
+      "main": [
+        [
+          {
+            "node": "保存日志",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    {
+      "name": "AI 导师",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    },
+    {
+      "name": "智能对话",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-27T00:00:00.000Z",
+  "versionId": "1"
+}

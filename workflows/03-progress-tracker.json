@@ -1,0 +1,302 @@
+{
+  "name": "03-Progress-Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "progress/track",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理进度追踪请求\nconst input = $input.first().json;\n\nconst trackingData = {\n  userId: input.userId,\n  pathId: input.pathId,\n  action: input.action, // 'start', 'complete', 'update'\n  itemType: input.itemType, // 'topic', 'phase', 'resource'\n  itemId: input.itemId,\n  timestamp: new Date().toISOString(),\n  metadata: input.metadata || {}\n};\n\nreturn {\n  json: {\n    trackingData,\n    processedAt: new Date().toISOString()\n  }\n};"
+      },
+      "id": "data-processor",
+      "name": "数据处理",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "table": "user_progress",
+        "columns": "user_id, path_id, item_type, item_id, action, completed, progress_data, created_at",
+        "values": "={{ $node[\"数据处理\"].json.json.trackingData.userId }}, {{ $node[\"数据处理\"].json.json.trackingData.pathId }}, {{ $node[\"数据处理\"].json.json.trackingData.itemType }}, {{ $node[\"数据处理\"].json.json.trackingData.itemId }}, {{ $node[\"数据处理\"].json.json.trackingData.action }}, {{ $node[\"数据处理\"].json.json.trackingData.action === 'complete' ? true : false }}, {{ JSON.stringify($node[\"数据处理\"].json.json.trackingData.metadata) }}, {{ new Date().toISOString() }}"
+      },
+      "id": "save-progress",
+      "name": "保存进度",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "table": "user_progress",
+        "where": "user_id = '{{ $node[\"数据处理\"].json.json.trackingData.userId }}' AND path_id = '{{ $node[\"数据处理\"].json.json.trackingData.pathId }}'",
+        "options": {}
+      },
+      "id": "get-user-progress",
+      "name": "获取用户进度",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 计算整体进度和统计信息\nconst progressRecords = $input.all();\nconst pathData = $('获取用户进度').first().json;\n\n// 统计完成情况\nconst completedItems = progressRecords.filter(r => r.json.completed === true);\nconst totalItems = progressRecords.length;\nconst progressPercentage = totalItems > 0 \n  ? Math.round((completedItems.length / totalItems) * 100) \n  : 0;\n\n// 按类型分组\nconst byType = {};\nprogressRecords.forEach(record => {\n  const type = record.json.item_type;\n  if (!byType[type]) {\n    byType[type] = { total: 0, completed: 0 };\n  }\n  byType[type].total++;\n  if (record.json.completed) {\n    byType[type].completed++;\n  }\n});\n\n// 学习时间统计\nconst startDate = new Date(Math.min(...progressRecords.map(r => new Date(r.json.created_at))));\nconst totalDays = Math.ceil((new Date() - startDate) / (1000 * 60 * 60 * 24));\nconst avgPerWeek = totalDays > 0 ? Math.round((completedItems.length / totalDays) * 7) : 0;\n\n// 生成激励消息\nconst motivationalMessages = [\n  { threshold: 0, message: \"🌱 开始你的学习之旅吧！\" },\n  { threshold: 25, message: \"💪 不错的开始，继续保持！\" },\n  { threshold: 50, message: \"🎯 已经过半了，加油！\" },\n  { threshold: 75, message: \"🔥 胜利在望，冲刺！\" },\n  { threshold: 100, message: \"🏆 恭喜完成！你是最棒的！\" }\n];\n\nconst currentMessage = motivationalMessages\n  .slice()\n  .reverse()\n  .find(m => progressPercentage >= m.threshold);\n\n// 计算预估完成时间\nconst remainingItems = totalItems - completedItems.length;\nconst estimatedDaysRemaining = avgPerWeek > 0 ? Math.ceil(remainingItems / avgPerWeek) * 7 : 30;\nconst estimatedCompletionDate = new Date();\nestimatedCompletionDate.setDate(estimatedCompletionDate.getDate() + estimatedDaysRemaining);\n\nreturn {\n  json: {\n    status: 'success',\n    progress: {\n      overall: progressPercentage,\n      completedItems: completedItems.length,\n      totalItems: totalItems,\n      byType: byType\n    },\n    statistics: {\n      startDate: startDate.toISOString(),\n      totalDays: totalDays,\n      averagePerWeek: avgPerWeek,\n      estimatedCompletionDate: estimatedCompletionDate.toISOString(),\n      remainingDays: estimatedDaysRemaining\n    },\n    achievements: [\n      { id: 'first_step', name: '第一步', unlocked: completedItems.length >= 1 },\n      { id: 'quarter_way', name: '四分之一', unlocked: progressPercentage >= 25 },\n      { id: 'halfway', name: '半途', unlocked: progressPercentage >= 50 },\n      { id: 'almost_there', name: '指日可待', unlocked: progressPercentage >= 75 },\n      { id: 'champion', name: '冠军', unlocked: progressPercentage >= 100 }\n    ],\n    motivation: currentMessage?.message || \"继续前进！\",\n    streak: calculateStreak(progressRecords)\n  }\n};\n\nfunction calculateStreak(records) {\n  // 简化版连续学习天数计算\n  const dates = [...new Set(records.map(r => new Date(r.json.created_at).toDateString()))];\n  dates.sort((a, b) => new Date(b) - new Date(a));\n  \n  let streak = 0;\n  const today = new Date().toDateString();\n  const yesterday = new Date(Date.now() - 86400000).toDateString();\n  \n  if (dates[0] === today || dates[0] === yesterday) {\n    streak = 1;\n    for (let i = 1; i < dates.length; i++) {\n      const prevDate = new Date(dates[i-1]);\n      const currDate = new Date(dates[i]);\n      const diffDays = (prevDate - currDate) / (1000 * 60 * 60 * 24);\n      if (diffDays === 1) {\n        streak++;\n      } else {\n        break;\n      }\n    }\n  }\n  \n  return streak;\n}"
+      },
+      "id": "analytics-engine",
+      "name": "分析引擎",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.progress.overall }}",
+              "operation": "greaterThan",
+              "value2": "75"
+            }
+          ]
+        }
+      },
+      "id": "check-milestone",
+      "name": "检查里程碑",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ `🎉 恭喜用户 ${$node[\"数据处理\"].json.json.trackingData.userId} 学习进度超过 75%！继续加油！` }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-notification",
+      "name": "发送通知",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($node[\"分析引擎\"].first().json, null, 2) }}",
+        "options": {}
+      },
+      "id": "response-node",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "hours": 1 }]
+        }
+      },
+      "id": "schedule-check",
+      "name": "定时检查",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 检查需要提醒的用户\nconst oneWeekAgo = new Date();\noneWeekAgo.setDate(oneWeekAgo.getDate() - 7);\n\nreturn {\n  json: {\n    type: 'reminder_check',\n    checkDate: new Date().toISOString(),\n    thresholdDate: oneWeekAgo.toISOString(),\n    message: '检查超过 7 天未学习的用户'\n  }\n};"
+      },
+      "id": "reminder-check",
+      "name": "提醒检查",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "table": "users",
+        "where": "last_activity_at < '{{ $node[\"提醒检查\"].json.json.thresholdDate }}' AND status = 'active'",
+        "options": {}
+      },
+      "id": "get-inactive-users",
+      "name": "获取不活跃用户",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EMAIL_SERVICE_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "subject",
+              "value": "💡 想念你的学习时光！"
+            },
+            {
+              "name": "body",
+              "value": "={{ `嗨 ${$json.name}，\n\n你已经 7 天没有学习了！\n\n你的学习进度：${$json.progress}%\n\n点击这里继续学习：${$json.resumeUrl}\n\n加油！💪` }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-reminder",
+      "name": "发送邮件提醒",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "数据处理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "数据处理": {
+      "main": [
+        [
+          {
+            "node": "保存进度",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "保存进度": {
+      "main": [
+        [
+          {
+            "node": "获取用户进度",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "获取用户进度": {
+      "main": [
+        [
+          {
+            "node": "分析引擎",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分析引擎": {
+      "main": [
+        [
+          {
+            "node": "检查里程碑",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查里程碑": {
+      "main": [
+        [
+          {
+            "node": "发送通知",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "返回响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "定时检查": {
+      "main": [
+        [
+          {
+            "node": "提醒检查",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "提醒检查": {
+      "main": [
+        [
+          {
+            "node": "获取不活跃用户",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "获取不活跃用户": {
+      "main": [
+        [
+          {
+            "node": "发送邮件提醒",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    {
+      "name": "进度追踪",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    },
+    {
+      "name": "学习分析",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 2,
+  "updatedAt": "2026-02-27T00:00:00.000Z",
+  "versionId": "1"
+}

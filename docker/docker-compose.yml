@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: study2026-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8n
+      - POSTGRES_DB=study2026
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - study2026-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: study2026-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - study2026-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ChromaDB 向量数据库
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: study2026-chroma
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    networks:
+      - study2026-network
+
+  # FastAPI 后端
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: study2026-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://n8n:n8n@postgres:5432/study2026
+      - REDIS_URL=redis://redis:6379
+      - CHROMA_URL=http://chromadb:8000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ../../apps/api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - study2026-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Next.js 前端
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+    container_name: study2026-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://api:8000
+    volumes:
+      - ../../apps/web:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - study2026-network
+    command: npm run dev
+
+volumes:
+  postgres_data:
+  redis_data:
+  chroma_data:
+
+networks:
+  study2026-network:
+    driver: bridge

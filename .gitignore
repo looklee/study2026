@@ -1,0 +1,101 @@
+# ======================
+# 环境和敏感信息
+# ======================
+.env
+.env.local
+.env.*.local
+*.env
+docker/.env
+
+# API 密钥和凭证
+api_keys.json
+credentials.json
+*.key
+*.pem
+*.secret
+*secret*
+
+# ======================
+# 依赖和模块
+# ======================
+node_modules/
+.pnpm-store/
+vendor/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# ======================
+# 构建输出
+# ======================
+dist/
+build/
+.next/
+out/
+*.log
+logs/
+
+# ======================
+# 数据卷和数据库
+# ======================
+volumes/
+*.db
+*.sqlite
+*.sqlite3
+
+# ======================
+# IDE 和编辑器
+# ======================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.iml
+
+# ======================
+# 测试和覆盖率
+# ======================
+coverage/
+.nyc_output/
+.pytest_cache/
+.tox/
+
+# ======================
+# 临时文件
+# ======================
+*.tmp
+*.bak
+*.temp
+tmp/
+temp/
+
+# ======================
+# OS 文件
+# ======================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# ======================
+# Docker
+# ======================
+docker-compose.override.yml
+
+# ======================
+# 项目特定
+# ======================
+.turbo/
+pnpm-lock.yaml
+package-lock.json

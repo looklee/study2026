@@ -1,0 +1,190 @@
+{
+  "name": "01-Learning-Path-Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "learning-path/generate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 验证和解析输入数据\nconst inputData = $input.first().json;\n\n// 必需字段验证\nconst requiredFields = ['currentLevel', 'targetGoal', 'availableHoursPerWeek'];\nconst missingFields = requiredFields.filter(field => !inputData[field]);\n\nif (missingFields.length > 0) {\n  throw new Error(`缺少必需字段：${missingFields.join(', ')}`);\n}\n\n// 数据清理和标准化\nconst cleanedData = {\n  currentLevel: inputData.currentLevel.toLowerCase(),\n  targetGoal: inputData.targetGoal.trim(),\n  availableHoursPerWeek: parseInt(inputData.availableHoursPerWeek),\n  preferredLearningStyle: inputData.preferredLearningStyle || 'mixed',\n  priorExperience: inputData.priorExperience || [],\n  deadline: inputData.deadline || null,\n  budget: inputData.budget || 'free'\n};\n\n// 学习级别映射\nconst levelMapping = {\n  'beginner': { level: 1, name: '初学者', duration: '12 周' },\n  'intermediate': { level: 2, name: '中级', duration: '8 周' },\n  'advanced': { level: 3, name: '高级', duration: '4 周' }\n};\n\ncleanedData.levelInfo = levelMapping[cleanedData.currentLevel] || levelMapping['beginner'];\n\nreturn {\n  json: {\n    status: 'validated',\n    userData: cleanedData,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "data-validator",
+      "name": "数据验证与处理",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "你是一位专业的 AI 学习路径规划专家，拥有 10 年教育技术经验。\n\n你的任务是：\n1. 分析学习者的背景、目标和约束条件\n2. 设计科学、可行的学习路径\n3. 提供详细的时间规划和里程碑\n4. 推荐适合的学习资源类型\n\n输出格式要求（JSON）：\n```json\n{\n  \"pathName\": \"路径名称\",\n  \"description\": \"路径描述\",\n  \"totalDuration\": \"总时长\",\n  \"phases\": [\n    {\n      \"phaseNumber\": 1,\n      \"phaseName\": \"阶段名称\",\n      \"duration\": \"持续时间\",\n      \"objectives\": [\"目标 1\", \"目标 2\"],\n      \"topics\": [\"主题 1\", \"主题 2\"],\n      \"resources\": [\n        {\n          \"type\": \"video|article|course|project\",\n          \"title\": \"资源标题\",\n          \"url\": \"链接\",\n          \"estimatedHours\": 2\n        }\n      ],\n      \"milestone\": \"里程碑描述\",\n      \"assessment\": \"评估方式\"\n    }\n  ],\n  \"weeklySchedule\": {\n    \"monday\": \"学习内容\",\n    \"wednesday\": \"学习内容\",\n    \"weekend\": \"实践项目\"\n  },\n  \"tips\": [\"学习建议 1\", \"学习建议 2\"]\n}\n```\n\n请确保路径：\n- 循序渐进，难度适中\n- 理论与实践结合\n- 包含可量化的里程碑\n- 考虑学习者的时间约束"
+            },
+            {
+              "role": "user",
+              "content": "={{ JSON.stringify($node[\"数据验证与处理\"].json.userData) }}\n\n请根据以上学习者信息，生成一份详细的个性化学习路径。"
+            }
+          ]
+        },
+        "options": {
+          "responseFormat": "json",
+          "temperature": 0.7,
+          "maxTokens": 4000
+        }
+      },
+      "id": "ai-path-generator",
+      "name": "AI 路径生成",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 解析 AI 生成的学习路径并添加元数据\nconst aiResponse = $input.first().json.output;\nconst userData = $('数据验证与处理').first().json.userData;\n\n// 解析路径数据（如果 AI 返回的是字符串，则解析 JSON）\nlet learningPath = typeof aiResponse === 'string' \n  ? JSON.parse(aiResponse) \n  : aiResponse;\n\n// 添加元数据\nconst enrichedPath = {\n  ...learningPath,\n  metadata: {\n    generatedAt: new Date().toISOString(),\n    userId: userData.userId || 'anonymous',\n    pathVersion: '1.0',\n    aiModel: 'gpt-4o'\n  },\n  learnerProfile: {\n    currentLevel: userData.currentLevel,\n    targetGoal: userData.targetGoal,\n    availableHoursPerWeek: userData.availableHoursPerWeek,\n    learningStyle: userData.preferredLearningStyle\n  },\n  progress: {\n    currentPhase: 0,\n    completedTopics: [],\n    overallProgress: 0,\n    startDate: null,\n    estimatedEndDate: null\n  }\n};\n\n// 计算预估结束日期\nif (userData.deadline) {\n  enrichedPath.progress.estimatedEndDate = new Date(userData.deadline).toISOString();\n} else {\n  const weeks = parseInt(learningPath.totalDuration) || 12;\n  const endDate = new Date();\n  endDate.setDate(endDate.getDate() + (weeks * 7));\n  enrichedPath.progress.estimatedEndDate = endDate.toISOString();\n}\n\nreturn {\n  json: {\n    status: 'success',\n    learningPath: enrichedPath,\n    message: '学习路径生成成功'\n  }\n};"
+      },
+      "id": "path-enricher",
+      "name": "路径数据增强",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "table": "learning_paths",
+        "columns": "user_id, path_data, created_at, status",
+        "values": "={{ $node[\"路径数据增强\"].json.json.learningPath.metadata.userId }}, {{ JSON.stringify($node[\"路径数据增强\"].json.json.learningPath) }}, {{ new Date().toISOString() }}, active"
+      },
+      "id": "save-to-db",
+      "name": "保存到数据库",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1050, 300],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-credentials",
+          "name": "PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($node[\"路径数据增强\"].first().json, null, 2) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "response-node",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 错误处理\nconst error = $input.first().json;\n\nreturn {\n  json: {\n    status: 'error',\n    error: {\n      message: error.message || '未知错误',\n      timestamp: new Date().toISOString(),\n      suggestion: '请检查输入数据格式，确保包含所有必需字段'\n    }\n  }\n};"
+      },
+      "id": "error-handler",
+      "name": "错误处理",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "数据验证与处理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "数据验证与处理": {
+      "main": [
+        [
+          {
+            "node": "AI 路径生成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI 路径生成": {
+      "main": [
+        [
+          {
+            "node": "路径数据增强",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "路径数据增强": {
+      "main": [
+        [
+          {
+            "node": "保存到数据库",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "保存到数据库": {
+      "main": [
+        [
+          {
+            "node": "返回响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "error-handler"
+  },
+  "tags": [
+    {
+      "name": "AI 学习",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    },
+    {
+      "name": "路径生成",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-27T00:00:00.000Z",
+  "versionId": "1"
+}

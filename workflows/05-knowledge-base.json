@@ -1,0 +1,363 @@
+{
+  "name": "05-Knowledge-Base-Manager",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "knowledge/upload",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "upload-webhook",
+      "name": "Upload Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理上传的文档\nconst inputData = $input.first().json;\nconst binaryData = inputData.binary;\n\nif (!binaryData) {\n  throw new Error('未找到上传的文件数据');\n}\n\n// 提取文件信息\nconst fileInfo = {\n  fileName: inputData.fileName || 'unknown',\n  mimeType: inputData.mimeType || 'text/plain',\n  fileSize: inputData.fileSize || 0,\n  uploadedAt: new Date().toISOString(),\n  userId: inputData.userId || 'system',\n  category: inputData.category || 'general',\n  tags: inputData.tags || []\n};\n\nreturn {\n  json: {\n    fileInfo,\n    binaryData,\n    status: 'processing'\n  }\n};"
+      },
+      "id": "file-processor",
+      "name": "文件处理",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "embeddings",
+      "name": "Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.1,
+      "position": [650, 100]
+    },
+    {
+      "parameters": {
+        "chunkSize": 1000,
+        "chunkOverlap": 200,
+        "options": {}
+      },
+      "id": "text-splitter",
+      "name": "文本分割",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacter",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "你是一位专业的知识整理专家。\n\n你的任务：\n1. 分析文档内容，提取关键知识点\n2. 生成简洁准确的摘要\n3. 提取相关的关键词和标签\n4. 识别知识点的难度级别\n5. 建议适合的学习顺序\n\n输出格式（JSON）：\n```json\n{\n  \"summary\": \"200 字以内的内容摘要\",\n  \"keyPoints\": [\"关键点 1\", \"关键点 2\", \"关键点 3\"],\n  \"keywords\": [\"关键词 1\", \"关键词 2\"],\n  \"difficulty\": \"beginner|intermediate|advanced\",\n  \"prerequisites\": [\"前置知识 1\", \"前置知识 2\"],\n  \"relatedTopics\": [\"相关主题 1\", \"相关主题 2\"],\n  \"category\": \"分类名称\",\n  \"estimatedReadTime\": 5\n}\n```"
+            },
+            {
+              "role": "user",
+              "content": "={{ $node[\"文件处理\"].json.json.binaryData.data || $node[\"文件处理\"].json.json.fileInfo.fileName }}"
+            }
+          ]
+        },
+        "options": {
+          "responseFormat": "json"
+        }
+      },
+      "id": "content-analyzer",
+      "name": "内容分析",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "knowledge_documents",
+        "schema": "public",
+        "columns": "file_name, file_size, mime_type, category, tags, summary, key_points, keywords, difficulty, uploaded_at, user_id, status",
+        "values": "={{ $node[\"文件处理\"].json.json.fileInfo.fileName }}, {{ $node[\"文件处理\"].json.json.fileInfo.fileSize }}, {{ $node[\"文件处理\"].json.json.fileInfo.mimeType }}, {{ $node[\"文件处理\"].json.json.fileInfo.category }}, {{ JSON.stringify($node[\"文件处理\"].json.json.fileInfo.tags) }}, {{ $node[\"内容分析\"].json.output.summary }}, {{ JSON.stringify($node[\"内容分析\"].json.output.keyPoints) }}, {{ JSON.stringify($node[\"内容分析\"].json.output.keywords) }}, {{ $node[\"内容分析\"].json.output.difficulty }}, {{ $node[\"文件处理\"].json.json.fileInfo.uploadedAt }}, {{ $node[\"文件处理\"].json.json.fileInfo.userId }}, processed"
+      },
+      "id": "save-metadata",
+      "name": "保存元数据",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "tableName": "study2026_knowledge",
+        "options": {}
+      },
+      "id": "vector-store",
+      "name": "Chroma 向量库",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreChroma",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "credentials": {
+        "chromaApi": {
+          "id": "chroma-credentials",
+          "name": "Chroma API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  status: 'success',\n  message: '知识文档处理完成',\n  document: {\n    fileName: $node[\"文件处理\"].first().json.json.fileInfo.fileName,\n    summary: $node[\"内容分析\"].first().json.output.summary,\n    keyPoints: $node[\"内容分析\"].first().json.output.keyPoints,\n    keywords: $node[\"内容分析\"].first().json.output.keywords,\n    difficulty: $node[\"内容分析\"].first().json.output.difficulty,\n    vectorStored: true,\n    processedAt: new Date().toISOString()\n  }\n}, null, 2) }}",
+        "options": {}
+      },
+      "id": "upload-response",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "knowledge/query",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "query-webhook",
+      "name": "Query Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理查询请求\nconst query = $input.first().json.query || '';\nconst filters = $input.first().json.filters || {};\n\nreturn {\n  json: {\n    query,\n    filters: {\n      category: filters.category,\n      difficulty: filters.difficulty,\n      keywords: filters.keywords,\n      limit: filters.limit || 10\n    },\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "query-processor",
+      "name": "查询处理",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "query-embeddings",
+      "name": "Query Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.1,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "tableName": "study2026_knowledge",
+        "topK": 10,
+        "options": {}
+      },
+      "id": "vector-search",
+      "name": "向量检索",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreRetrieverChroma",
+      "typeVersion": 1,
+      "position": [850, 500],
+      "credentials": {
+        "chromaApi": {
+          "id": "chroma-credentials",
+          "name": "Chroma API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "table": "knowledge_documents",
+        "where": "status = 'processed'",
+        "options": {}
+      },
+      "id": "metadata-search",
+      "name": "元数据检索",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1050, 500]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "你是一位知识整合专家。\n\n你的任务：\n1. 根据检索结果，组织清晰、结构化的答案\n2. 引用相关文档来源\n3. 指出知识点之间的关联\n4. 如有信息冲突，明确指出\n\n回答格式：\n- 先给出直接答案\n- 然后详细解释\n- 最后列出参考来源"
+            },
+            {
+              "role": "user",
+              "content": "={{ `问题：${$node[\"查询处理\"].first().json.query}\n\n检索到的信息：${JSON.stringify($node[\"向量检索\"].all(), null, 2)}\n\n请根据以上信息，组织一个完整、准确的回答。` }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "answer-generator",
+      "name": "答案生成",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  status: 'success',\n  query: $node[\"查询处理\"].first().json.query,\n  answer: $node[\"答案生成\"].first().json.output,\n  sources: $node[\"元数据检索\"].all().map(r => ({\n    fileName: r.json.file_name,\n    summary: r.json.summary,\n    relevance: 'high'\n  })),\n  timestamp: new Date().toISOString()\n}, null, 2) }}",
+        "options": {}
+      },
+      "id": "query-response",
+      "name": "返回查询结果",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1450, 500]
+    }
+  ],
+  "connections": {
+    "Upload Webhook": {
+      "main": [
+        [
+          {
+            "node": "文件处理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "文件处理": {
+      "main": [
+        [
+          {
+            "node": "文本分割",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "内容分析",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "内容分析": {
+      "main": [
+        [
+          {
+            "node": "保存元数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "保存元数据": {
+      "main": [
+        [
+          {
+            "node": "Chroma 向量库",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chroma 向量库": {
+      "main": [
+        [
+          {
+            "node": "返回响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Webhook": {
+      "main": [
+        [
+          {
+            "node": "查询处理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "查询处理": {
+      "main": [
+        [
+          {
+            "node": "Query Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Embeddings": {
+      "main": [
+        [
+          {
+            "node": "向量检索",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "向量检索": {
+      "main": [
+        [
+          {
+            "node": "元数据检索",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "元数据检索": {
+      "main": [
+        [
+          {
+            "node": "答案生成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "答案生成": {
+      "main": [
+        [
+          {
+            "node": "返回查询结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    {
+      "name": "知识库",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    },
+    {
+      "name": "RAG",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 2,
+  "updatedAt": "2026-02-27T00:00:00.000Z",
+  "versionId": "1"
+}

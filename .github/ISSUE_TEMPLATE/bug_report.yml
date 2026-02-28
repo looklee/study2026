@@ -1,0 +1,79 @@
+---
+name: 🐛 Bug Report
+description: 报告一个 Bug
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢您报告 Bug！请填写以下信息帮助我们定位问题。
+  
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug 描述
+      description: 请清晰简洁地描述 Bug
+      placeholder: 例如：点击签到按钮后页面崩溃...
+    validations:
+      required: true
+  
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 重现步骤
+      description: 如何重现这个 Bug
+      placeholder: |
+        1. 打开 '...'
+        2. 点击 '....'
+        3. 滚动到 '....'
+        4. 发现错误
+    validations:
+      required: true
+  
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      description: 您期望发生什么
+    validations:
+      required: true
+  
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 实际发生了什么
+    validations:
+      required: true
+  
+  - type: input
+    id: environment
+    attributes:
+      label: 环境信息
+      placeholder: "OS: Windows 11, Browser: Chrome 120, Node: v18.0.0, Python: 3.11"
+    validations:
+      required: true
+  
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志/错误信息
+      description: 粘贴相关的日志或错误信息
+      render: shell
+  
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图
+      description: 如有，添加截图帮助说明问题
+  
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: 确认
+      options:
+        - label: 我已搜索现有 issues，没有重复
+          required: true
+        - label: 我已提供足够的信息来重现问题
+          required: true

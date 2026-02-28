@@ -1,0 +1,32 @@
+{
+  "name": "study2026",
+  "version": "1.0.0",
+  "private": true,
+  "description": "自主 AI 学习平台",
+  "scripts": {
+    "dev": "concurrently \"pnpm dev:web\" \"pnpm dev:api\"",
+    "dev:web": "turbo dev --filter=web",
+    "dev:api": "turbo dev --filter=api",
+    "build": "turbo build",
+    "build:web": "turbo build --filter=web",
+    "build:api": "turbo build --filter=api",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "db:migrate": "turbo db:migrate --filter=database",
+    "db:seed": "turbo db:seed --filter=database",
+    "docker:up": "docker-compose -f docker/docker-compose.dev.yml up -d",
+    "docker:down": "docker-compose -f docker/docker-compose.dev.yml down",
+    "docker:logs": "docker-compose -f docker/docker-compose.dev.yml logs -f"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}

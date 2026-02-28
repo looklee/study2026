@@ -1,0 +1,101 @@
+{
+  "name": "03-Progress-Tracker-SQLite",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "progress/track",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理进度追踪请求\nconst input = $input.first().json;\n\nconst trackingData = {\n  userId: input.userId || 'anonymous',\n  pathId: input.pathId || 'default',\n  action: input.action || 'update',\n  itemType: input.itemType || 'topic',\n  itemId: input.itemId || 'item_' + Date.now(),\n  timestamp: new Date().toISOString(),\n  metadata: input.metadata || {}\n};\n\nreturn {\n  json: {\n    trackingData,\n    processedAt: new Date().toISOString()\n  }\n};"
+      },
+      "id": "data-processor",
+      "name": "数据处理",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 简化的进度计算\nconst trackingData = $input.first().json.json.trackingData;\n\n// 模拟进度数据\nconst progress = {\n  overall: Math.floor(Math.random() * 30) + 20, // 20-50%\n  completedItems: Math.floor(Math.random() * 10) + 5,\n  totalItems: 40,\n  currentStreak: Math.floor(Math.random() * 7) + 1\n};\n\n// 生成激励消息\nconst messages = [\n  \"🌱 开始你的学习之旅吧！\",\n  \"💪 不错的开始，继续保持！\",\n  \"🎯 已经过半了，加油！\",\n  \"🔥 胜利在望，冲刺！\",\n  \"🏆 恭喜完成！你是最棒的！\"\n];\n\nconst messageIndex = Math.min(Math.floor(progress.overall / 20), messages.length - 1);\n\nreturn {\n  json: {\n    status: 'success',\n    progress: progress,\n    statistics: {\n      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),\n      totalDays: 30,\n      averagePerWeek: 5,\n      estimatedCompletionDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString()\n    },\n    achievements: [\n      { id: 'first_step', name: '第一步', unlocked: true },\n      { id: 'quarter_way', name: '四分之一', unlocked: progress.overall >= 25 },\n      { id: 'halfway', name: '半途', unlocked: progress.overall >= 50 }\n    ],\n    motivation: messages[messageIndex],\n    streak: progress.currentStreak,\n    trackingData: trackingData\n  }\n};"
+      },
+      "id": "analytics-engine",
+      "name": "分析引擎",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($node[\"分析引擎\"].first().json, null, 2) }}",
+        "options": {}
+      },
+      "id": "response-node",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "数据处理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "数据处理": {
+      "main": [
+        [
+          {
+            "node": "分析引擎",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分析引擎": {
+      "main": [
+        [
+          {
+            "node": "返回响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "进度追踪",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    },
+    {
+      "name": "简化版",
+      "createdAt": "2026-02-27T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-27T00:00:00.000Z",
+  "versionId": "1"
+}

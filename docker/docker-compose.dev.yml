@@ -1,0 +1,135 @@
+version: '3.8'
+
+# 开发环境配置
+# 用于本地开发和测试
+
+services:
+  # ======================
+  # n8n (开发模式)
+  # ======================
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: study2026-n8n-dev
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      - N8N_HOST=${N8N_HOST:-http://localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_SECURE_COOKIE=false
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin
+      
+      # 开发配置
+      - N8N_LOG_LEVEL=debug
+      - N8N_DIAGRAMS_ENABLED=true
+      - N8N_EDITOR_BASE_URL=http://localhost:5678/
+      
+      # 数据库配置
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=n8n
+      
+      # AI 配置
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      
+      # 时区
+      - TZ=Asia/Shanghai
+      
+    volumes:
+      - n8n_dev_data:/home/node/.n8n
+      - ./workflows:/home/node/.n8n/workflows:ro
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - study2026-dev-network
+
+  # ======================
+  # PostgreSQL
+  # ======================
+  postgres:
+    image: postgres:15-alpine
+    container_name: study2026-postgres-dev
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8n
+      - POSTGRES_DB=n8n
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - study2026-dev-network
+
+  # ======================
+  # Redis
+  # ======================
+  redis:
+    image: redis:7-alpine
+    container_name: study2026-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - study2026-dev-network
+
+  # ======================
+  # pgAdmin (数据库管理)
+  # ======================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: study2026-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@study2026.local
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - study2026-dev-network
+
+  # ======================
+  # Chroma (向量数据库)
+  # ======================
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: study2026-chroma-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_dev_data:/chroma/chroma
+    networks:
+      - study2026-dev-network
+
+volumes:
+  n8n_dev_data:
+    driver: local
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  chroma_dev_data:
+    driver: local
+
+networks:
+  study2026-dev-network:
+    driver: bridge
