@@ -32,8 +32,10 @@ else:
             pool_size=10,
             max_overflow=20
         )
-    except Exception:
+    except Exception as e:
         # Fallback to sqlite if postgres fails
+        import logging
+        logging.warning(f"PostgreSQL connection failed: {e}. Falling back to SQLite.")
         async_engine = create_async_engine(
             "sqlite+aiosqlite:///./study2026.db",
             echo=False,

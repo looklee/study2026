@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings
 from typing import List
 import os
@@ -23,9 +24,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     DEFAULT_AI_MODEL: str = "gpt-4o"
+
+    # OpenClaw 配置
+    OPENCLAW_API_KEY: str = ""
+    OPENCLAW_BASE_URL: str = "https://api.openai.com/v1"
     
     # JWT 配置
-    JWT_SECRET: str = "change-this-secret-in-production"
+    JWT_SECRET: str = Field(default_factory=lambda: os.environ.get('JWT_SECRET', 'change-this-secret-in-production'), description="JWT 密钥，生产环境中必须设置强密钥")
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 天
     

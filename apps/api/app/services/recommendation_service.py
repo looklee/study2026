@@ -102,6 +102,10 @@ async def upload_document(
     await db.refresh(document)
     
     # TODO: 处理文档（文本提取、向量化等）
+    # 这里可以添加文档解析和向量化逻辑
+    # 例如使用 langchain 提取文本并存储到向量数据库
+    # await process_and_vectorize_document(document.id, content)
+    pass
     
     return {
         "status": "success",

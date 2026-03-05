@@ -9,6 +9,7 @@ from app.schemas import (
     MessageResponse
 )
 from app.services import user_service, path_service
+from app.core.security import get_current_user
 
 router = APIRouter()
 
@@ -21,10 +22,12 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user(db: AsyncSession = Depends(get_db)):
+async def get_current_user_endpoint(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """获取当前用户"""
-    # TODO: 添加 JWT 认证
-    user = await user_service.get_user_by_id(db, 1)
+    user = await user_service.get_user_by_id(db, current_user.id)
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     return user

@@ -9,54 +9,12 @@ export default function PathsPage() {
   const { data: paths, isLoading } = useQuery({
     queryKey: ['paths'],
     queryFn: async () => {
-      // TODO: 替换为真实 API
-      return [
-        {
-          id: 1,
-          path_name: '机器学习入门',
-          description: '从零开始掌握机器学习基础',
-          progress: 45,
-          total_duration: '12 周',
-          status: 'active',
-          current_phase: 1,
-          phases: [
-            { name: 'Python 基础', status: 'completed' },
-            { name: '机器学习基础', status: 'in_progress' },
-            { name: '深度学习入门', status: 'pending' },
-            { name: '实战项目', status: 'pending' }
-          ]
-        },
-        {
-          id: 2,
-          path_name: '深度学习进阶',
-          description: '深入理解神经网络和深度学习架构',
-          progress: 20,
-          total_duration: '8 周',
-          status: 'active',
-          current_phase: 0,
-          phases: [
-            { name: '神经网络基础', status: 'in_progress' },
-            { name: 'CNN 卷积神经网络', status: 'pending' },
-            { name: 'RNN 循环神经网络', status: 'pending' },
-            { name: 'Transformer 架构', status: 'pending' }
-          ]
-        },
-        {
-          id: 3,
-          path_name: 'LLM 应用开发',
-          description: '学习开发和部署大语言模型应用',
-          progress: 0,
-          total_duration: '6 周',
-          status: 'not_started',
-          current_phase: 0,
-          phases: [
-            { name: 'LLM 基础', status: 'pending' },
-            { name: 'Prompt Engineering', status: 'pending' },
-            { name: 'RAG 应用开发', status: 'pending' },
-            { name: 'Agent 开发', status: 'pending' }
-          ]
-        }
-      ]
+      // 调用真实 API 获取学习路径
+      const response = await fetch('/api/v1/paths');
+      if (!response.ok) {
+        throw new Error('Failed to fetch paths');
+      }
+      return response.json();
     }
   })
 
