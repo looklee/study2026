@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # OpenClaw 配置
     OPENCLAW_API_KEY: str = ""
     OPENCLAW_BASE_URL: str = "https://api.openai.com/v1"
+
+    # ComfyUI 配置
+    COMFYUI_BASE_URL: str = "http://127.0.0.1:8188"
     
     # JWT 配置
     JWT_SECRET: str = Field(default_factory=lambda: os.environ.get('JWT_SECRET', 'change-this-secret-in-production'), description="JWT 密钥，生产环境中必须设置强密钥")

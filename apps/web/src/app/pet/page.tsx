@@ -42,8 +42,8 @@ export default function PetPage() {
 
   const fetchPet = async () => {
     try {
-      const res = await fetch('http://localhost:8001/api/v1/pet')
-      const data = await res.json()
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/pet?user_id=demo_user`)
+      const data = await response.json()
       setPet(data)
     } catch (error) {
       console.error('获取宠物信息失败:', error)
@@ -55,13 +55,13 @@ export default function PetPage() {
   const handleInteract = async (action: string) => {
     setInteracting(action)
     try {
-      const res = await fetch('http://localhost:8001/api/v1/pet/interact', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/pet/interact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: 'demo_user', action })
       })
       const result: InteractionResult = await res.json()
-      
+
       if (result.status === 'success') {
         setPet(result.pet)
         // 检查是否升级
@@ -85,7 +85,7 @@ export default function PetPage() {
   const handleAddExp = async () => {
     setInteracting('study')
     try {
-      const res = await fetch('http://localhost:8001/api/v1/pet/exp', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/pet/exp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: 'demo_user', exp: 20, reason: '学习' })

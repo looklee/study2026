@@ -1,0 +1,11 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "python -m uvicorn app.main_simple:app --host 0.0.0.0 --port 8001 --reload",
+    "start": "python -m uvicorn app.main_simple:app --host 0.0.0.0 --port 8001",
+    "lint": "echo \"No linting configured for Python API\"",
+    "typecheck": "echo \"No type checking configured for Python API\""
+  }
+}

@@ -49,6 +49,17 @@ const providers = [
     configUrl: 'https://console.anthropic.com/settings/keys',
     defaultBaseUrl: 'https://api.anthropic.com',
     envVar: 'ANTHROPIC_API_KEY'
+  },
+  {
+    id: 'openclaw',
+    name: 'OpenClaw AI 助手',
+    description: '个人AI助手，支持多模型和技能扩展',
+    category: 'AI',
+    icon: '🦞',
+    color: 'red',
+    configUrl: 'https://github.com/openclaw/openclaw',
+    defaultBaseUrl: 'https://api.openai.com/v1',
+    envVar: 'OPENCLAW_API_KEY'
   }
 ]
 
@@ -298,15 +309,27 @@ export default function IntegrationsPage() {
               )}
 
               {/* 获取密钥链接 */}
-              <a
-                href={provider.configUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500 hover:text-gray-700"
-              >
-                <LinkIcon className="h-3 w-3" />
-                获取 API Key
-              </a>
+              <div className="space-y-2">
+                {provider.id !== 'openclaw' ? (
+                  <a
+                    href={provider.configUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    <LinkIcon className="h-3 w-3" />
+                    获取 API Key
+                  </a>
+                ) : (
+                  <a
+                    href="/integrations/openclaw"
+                    className="flex items-center justify-center gap-2 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    <Settings className="h-3 w-3" />
+                    配置 OpenClaw
+                  </a>
+                )}
+              </div>
             </div>
           )
         })}

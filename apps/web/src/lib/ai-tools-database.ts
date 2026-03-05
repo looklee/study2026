@@ -185,6 +185,34 @@ export const aiToolsDatabase: AITool[] = [
     icon: '🥧',
     color: 'orange'
   },
+  {
+    id: '13',
+    name: 'OpenClaw AI 助手',
+    url: '/openclaw',
+    description: '个人AI助手，支持多模型和技能扩展，跨平台使用，数据自主',
+    category: '对话助手',
+    tags: ['个人助手', '多模型', '技能扩展', '跨平台'],
+    pricing: '免费',
+    rating: 4.8,
+    popularity: 45000,
+    chinese: true,
+    icon: '🦞',
+    color: 'red'
+  },
+  {
+    id: '14',
+    name: 'AI 多媒体创作',
+    url: '/multimedia',
+    description: '文生图、图生图、视频生成、图片编辑等多媒体AI创作工具',
+    category: 'AI 创作',
+    tags: ['图像生成', '视频生成', '图片编辑', 'AI创作'],
+    pricing: '免费',
+    rating: 4.9,
+    popularity: 55000,
+    chinese: true,
+    icon: '🎨',
+    color: 'purple'
+  },
 
   // ============== AI 写作 (10 个) ==============
   {
@@ -355,6 +383,34 @@ export const aiToolsDatabase: AITool[] = [
     popularity: 80000,
     chinese: false,
     icon: '🌊',
+    color: 'blue'
+  },
+  {
+    id: '202-comfyui',
+    name: 'ComfyUI 本地集成',
+    url: '/tools/comfyui',
+    description: '与本地 ComfyUI 实例集成，实现高级AI图像生成和工作流管理',
+    category: 'AI 绘画',
+    tags: ['图像生成', '工作流', '本地部署', '高级功能'],
+    pricing: '免费',
+    rating: 4.8,
+    popularity: 75000,
+    chinese: true,
+    icon: '🎨',
+    color: 'indigo'
+  },
+  {
+    id: '202-watermark-removal',
+    name: '高级去水印工具',
+    url: '/tools/advanced-watermark-removal',
+    description: '使用AI技术智能去除图像中的水印，支持涂抹选择和多种去除算法',
+    category: '图像处理',
+    tags: ['图像处理', 'AI修复', '去水印', '涂抹选择'],
+    pricing: '免费',
+    rating: 4.7,
+    popularity: 68000,
+    chinese: true,
+    icon: '💧',
     color: 'blue'
   },
   {
@@ -1652,6 +1708,7 @@ export const categories = [
   { id: 'AI 绘画', name: 'AI 绘画', icon: '🎨' },
   { id: 'AI 视频', name: 'AI 视频', icon: '🎬' },
   { id: 'AI 音频', name: 'AI 音频', icon: '🔊' },
+  { id: 'AI 创作', name: 'AI 创作', icon: '✨' },
   { id: '编程开发', name: '编程开发', icon: '💻' },
   { id: '办公效率', name: '办公效率', icon: '📊' },
   { id: '搜索研究', name: '搜索研究', icon: '🔍' },

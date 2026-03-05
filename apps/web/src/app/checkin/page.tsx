@@ -46,7 +46,7 @@ export default function CheckinPage() {
 
   const fetchCheckinInfo = async () => {
     try {
-      const res = await fetch('http://localhost:8001/api/v1/checkin/info')
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/checkin/info`)
       const data = await res.json()
       setCheckinInfo(data)
     } catch (error) {
@@ -59,19 +59,21 @@ export default function CheckinPage() {
   const handleCheckIn = async () => {
     setCheckingIn(true)
     try {
-      const res = await fetch('http://localhost:8001/api/v1/checkin', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/checkin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: 'demo_user', username: '演示用户' })
       })
       const result = await res.json()
-      
+
       if (result.status === 'success') {
         setReward(result)
         setShowReward(true)
         // 给宠物也发奖励
-        await fetch('http://localhost:8001/api/v1/pet/checkin-bonus', {
-          method: 'POST'
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/pet/checkin-bonus`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: 'demo_user' })
         })
       }
       fetchCheckinInfo()

@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 3000)
 
-      const response = await fetch('http://localhost:8001/api/v1/device/identify', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/device/identify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (savedSessionId && savedDeviceId && savedUser) {
       try {
-        const response = await fetch(`http://localhost:8001/api/v1/device/verify/${savedSessionId}`)
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/device/verify/${savedSessionId}`)
         const result = await response.json()
 
         if (result.status === 'success') {
@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return
 
     try {
-      await fetch(`http://localhost:8001/api/v1/user/${user.user_id}/preferences`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/${user.user_id}/preferences`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(prefs)

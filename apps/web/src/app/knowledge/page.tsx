@@ -16,7 +16,7 @@ export default function KnowledgePage() {
   const { data: stats } = useQuery({
     queryKey: ['knowledge-stats'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:8001/api/v1/knowledge/stats')
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/knowledge/stats`)
       return response.json()
     }
   })
@@ -25,7 +25,7 @@ export default function KnowledgePage() {
   const { data: categories } = useQuery({
     queryKey: ['knowledge-categories'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:8001/api/v1/knowledge/categories')
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/knowledge/categories`)
       return response.json()
     }
   })
@@ -34,9 +34,9 @@ export default function KnowledgePage() {
   const { data: documents, isLoading } = useQuery({
     queryKey: ['knowledge-documents', selectedCategory],
     queryFn: async () => {
-      const url = selectedCategory !== 'all' 
-        ? `http://localhost:8001/api/v1/knowledge/documents?category=${selectedCategory}`
-        : 'http://localhost:8001/api/v1/knowledge/documents'
+      const url = selectedCategory !== 'all'
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/knowledge/documents?category=${selectedCategory}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/knowledge/documents`
       const response = await fetch(url)
       return response.json()
     }
@@ -45,7 +45,7 @@ export default function KnowledgePage() {
   // 搜索知识库
   const searchMutation = useMutation({
     mutationFn: async (query: string) => {
-      const response = await fetch('http://localhost:8001/api/v1/knowledge/search', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/knowledge/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, limit: 20 })
@@ -57,7 +57,7 @@ export default function KnowledgePage() {
   // 上传文档
   const uploadMutation = useMutation({
     mutationFn: async (docData: any) => {
-      const response = await fetch('http://localhost:8001/api/v1/knowledge/documents', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/knowledge/documents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(docData)
@@ -75,7 +75,7 @@ export default function KnowledgePage() {
   // 删除文档
   const deleteMutation = useMutation({
     mutationFn: async (docId: string) => {
-      const response = await fetch(`http://localhost:8001/api/v1/knowledge/documents/${docId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/knowledge/documents/${docId}`, {
         method: 'DELETE'
       })
       return response.json()

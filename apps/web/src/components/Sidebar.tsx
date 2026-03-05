@@ -25,6 +25,8 @@ const navigation = [
   { name: '仪表板', href: '/dashboard', icon: BarChart3 },
   { name: '学习路径', href: '/paths', icon: BookOpen },
   { name: 'AI 导师', href: '/chat', icon: MessageSquare },
+  { name: 'OpenClaw 助手', href: '/openclaw', icon: Sparkles },
+  { name: 'AI 创作', href: '/multimedia', icon: Sparkles },
   { name: '学习进度', href: '/progress', icon: BarChart3 },
   { name: '每日签到', href: '/checkin', icon: Calendar },
   { name: '学习伴侣', href: '/pet', icon: Heart },
