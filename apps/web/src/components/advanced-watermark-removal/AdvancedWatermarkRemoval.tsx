@@ -17,7 +17,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 
 const AdvancedWatermarkRemoval = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);

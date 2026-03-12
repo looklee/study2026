@@ -46,13 +46,13 @@ export default function PathsPage() {
         <StatCard
           icon={Clock}
           label="进行中"
-          value={paths?.filter(p => p.status === 'active').length || 0}
+          value={paths?.filter((p: any) => p.status === 'active').length || 0}
           color="green"
         />
         <StatCard
           icon={TrendingUp}
           label="已完成"
-          value={paths?.filter(p => p.progress === 100).length || 0}
+          value={paths?.filter((p: any) => p.progress === 100).length || 0}
           color="purple"
         />
       </div>
@@ -65,7 +65,7 @@ export default function PathsPage() {
             <p className="text-gray-500 mt-4">加载中...</p>
           </div>
         ) : (
-          paths?.map((path) => (
+          paths?.map((path: any) => (
             <PathCard key={path.id} path={path} />
           ))
         )}

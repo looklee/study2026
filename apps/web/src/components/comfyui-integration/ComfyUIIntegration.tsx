@@ -22,7 +22,7 @@ import {
   Settings,
   RefreshCw
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 
 // 类型定义
 interface ComfyUIStatus {
