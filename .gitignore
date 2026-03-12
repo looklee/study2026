@@ -97,5 +97,6 @@ docker-compose.override.yml
 # 项目特定
 # ======================
 .turbo/
-pnpm-lock.yaml
-package-lock.json
+# 注意：锁文件应该提交到 Git 以确保 CI/CD 依赖一致性
+# pnpm-lock.yaml
+# package-lock.json
